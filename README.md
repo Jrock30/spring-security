@@ -1,5 +1,10 @@
 # Spring Security
 
+## 소프트웨어 구성
+- Spring Web
+- Spring Security
+- - -
+
 - Securiy Library 추가
 > 1. 서버가 기동되면 스프링 시큐리티의 초기화 작업 및 보안 설정이 이루어진다
 > 2. 별도의 설정이나 구현을 하지 않아도 기본적인 웹 보안 기능이 현재 시스템에 연동되어 작동함
