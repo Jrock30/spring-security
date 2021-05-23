@@ -1,11 +1,13 @@
 package com.jrock.basicsecurity;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
@@ -23,6 +25,10 @@ import java.io.IOException;
 @Configuration
 @EnableWebSecurity // 웹 보안 활성화 어노테이션
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
@@ -52,12 +58,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         httpServletResponse.sendRedirect("/login");
                     }
                 })
-        .permitAll() // 위의 페이지에는 모두 접근이 가능하도록 설정 /login (default), /loginPage (주석처리 부분 패스)
+                .permitAll() // 위의 페이지에는 모두 접근이 가능하도록 설정 /login (default), /loginPage (주석처리 부분 패스)
         ;
 
         /**
          * 로그아웃
          * 기본 POST, get 으로 바꿀수도 있음.
+         * LogoutFilter.java
          */
         http
                 .logout()
@@ -77,6 +84,23 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     }
                 })
                 .deleteCookies("remember-me") // 쿠키 삭제 명
+                ;
+
+        /**
+         * rememberMe
+         *
+         * 처리 조건
+         *   - 로그아웃이 세션이 만료 되었을 떄 ( 인증객체가 없을 경우 )
+         *   - remember me 쿠키를 가지고 있는 경우
+         *   - RememberMeAuthenticationFilter -> RememberMeServices (TokenBasedRememberMeServices, PersistentTokenBasedRememberMeServices)
+         *      -> Token Cookie 추출 -> Token 존재여부 판단 -> Decode Token(정상 유무 판단) -> Token 이 서로 일치하는가 -> User 계정이 존재하는가 -> 새로운 Authentication 생성 -> AuthenticationManager
+         */
+        http
+                .rememberMe()
+                .rememberMeParameter("remember") // 기본 파라미터명 remember-me
+                .tokenValiditySeconds(3600) // Default 14일
+//                .alwaysRemember(true) // 리벱버 미 기능이 활성화 되지 않아도 항상 실행
+                .userDetailsService(userDetailsService)
                 ;
     }
 }
