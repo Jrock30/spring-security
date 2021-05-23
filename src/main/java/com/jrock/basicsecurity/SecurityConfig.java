@@ -8,10 +8,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
 /**
@@ -26,6 +29,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .authorizeRequests()
                 .anyRequest().authenticated(); // 어떤 요청에도 인증을 받도록
 
+        // 로그인
         http
                 .formLogin()                            // 인증 폼 로그인 방식
 //                .loginPage("/loginPage")                // 사용자 정의 로그인 페이지
@@ -51,6 +55,29 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         .permitAll() // 위의 페이지에는 모두 접근이 가능하도록 설정 /login (default), /loginPage (주석처리 부분 패스)
         ;
 
+        /**
+         * 로그아웃
+         * 기본 POST, get 으로 바꿀수도 있음.
+         */
+        http
+                .logout()
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/login")
+                .addLogoutHandler(new LogoutHandler() {
+                    @Override
+                    public void logout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Authentication authentication) {
+                        HttpSession session = httpServletRequest.getSession();
+                        session.invalidate(); // 세션 무효화
+                    }
+                })
+                .logoutSuccessHandler(new LogoutSuccessHandler() { // .logoutSuccessUrl 보다 좀 더 다양한 행위를 하기 위해 구현
+                    @Override
+                    public void onLogoutSuccess(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Authentication authentication) throws IOException, ServletException {
+                        httpServletResponse.sendRedirect("/login");
+                    }
+                })
+                .deleteCookies("remember-me") // 쿠키 삭제 명
+                ;
     }
 }
 
