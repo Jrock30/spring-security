@@ -63,7 +63,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         /**
          * 로그아웃
-         * 기본 POST, get 으로 바꿀수도 있음.
+         * 기본 POST, GET 으로 바꿀수도 있음.
          * LogoutFilter.java
          */
         http
