@@ -102,6 +102,28 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 //                .alwaysRemember(true) // 리벱버 미 기능이 활성화 되지 않아도 항상 실행
                 .userDetailsService(userDetailsService)
                 ;
+
+        /**
+         * 동시 세션 제어
+         */
+        http
+                .sessionManagement()
+                .maximumSessions(1) // 세션 최대 허용 개수, -1 -> 무제한 설정
+                .maxSessionsPreventsLogin(false); // 허용개수 초과 시 제어 default - false(, true (기존 세션 만료)
+//                .expiredUrl("/path") // 세션이 만료된 경우 이동할 페이지
+
+        /**
+         * 세션 고정보호
+         *  공격자가 JSESSIONID 를 발급해 놓고 사용자 쿠키에 심어 놓으면 사용자가 심어 놓은 JSESSIONID 를 가지고
+         *  로그인을 하게 되면 세션은 공유되어 모든 정보가 공유된다.
+         *  - none()            -> 아무것도 사용하지 않음 ( JSESSIONID 로 공격하면 먹힘 )
+         *  - changeSessionId() -> 서블릿 3.1 이상 default
+         *  - migrateSession()  -> 서블릿 3.1 미만 default
+         *  - newSession()
+         */
+        http
+                .sessionManagement()
+                .sessionFixation().changeSessionId();
     }
 }
 
