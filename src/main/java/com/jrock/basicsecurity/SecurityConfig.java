@@ -109,7 +109,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http
                 .sessionManagement()
                 .maximumSessions(1) // 세션 최대 허용 개수, -1 -> 무제한 설정
-                .maxSessionsPreventsLogin(false); // 허용개수 초과 시 제어 default - false(, true (기존 세션 만료)
+                .maxSessionsPreventsLogin(false); // 허용개수 초과 시 제어 default - false(기존 세션 만료(사용자1 세션만료)), true (사용자2 인증실패, true))
 //                .expiredUrl("/path") // 세션이 만료된 경우 이동할 페이지
 
         /**

@@ -40,3 +40,17 @@
 > Always      -> 스프링 시큐리티가 항상 세션 생성
 > Never       -> 스프링 시큐리티가 세션을 생성하지 않지만 이미 존재하면 사용
 > Stateless   -> 스프링 시큐리티가 세션을 생성하지 않고 존재해도 사용하지 않음 (세션을 사용하지 않고 JWT 같은 것을 사용할 떄)
+
+- 인증 API
+> User1 접속 시 
+> 1. UsernamePasswordAuthenticationFilter, ConcurrentSessionFilter(세션 만료되었는지 항상 체크)  login
+> 2. ConcurrentSessionControlAuthenticationStrategy 에서 session count 0 체크
+> 3. ChangeSessionIdAuthenticationStrategy 에서 session.changeSessionId() 새롭게 세션 ID 생성
+> 4. RegisterSessionAuthenticationStrategy 세션정보 등록 : session count 1    
+>
+> User1 과 같은 User2 접속 시 
+> 1. 위와 똑같은 과정을 거치면서 ConcurrentSessionControlAuthenticationStrategy 에서 session count 1 (sessionCount == maxSessions )
+> 2. 인증 전략에 따라  
+> 2.1 인증실패 전략인 경우 SessionAuthenticationException -> user2 인증실패  
+> 2.2 세션만료 전략인 경우 session.expireNow(): user1 -> user1 세션 만료 후 위의 user1 과정 실행   
+> 2.3 user1 은 요청 시 session.isExpired() 가 ture 가 되어 logout 된다.
