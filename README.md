@@ -54,3 +54,14 @@
 > 2.1 인증실패 전략인 경우 SessionAuthenticationException -> user2 인증실패  
 > 2.2 세션만료 전략인 경우 session.expireNow(): user1 -> user1 세션 만료 후 위의 user1 과정 실행   
 > 2.3 user1 은 요청 시 session.isExpired() 가 ture 가 되어 logout 된다.
+
+- 인가 API 권한설정
+> - 선언적 방식
+>   * URL   
+>      - http.antMatchers("/users/**).hasRole("USER")
+>   * Method
+>      - @PreAuthorize("hasRole('USER)")
+> - 동적방식 - DB 연동 프로그래밍
+>   - URL
+>   - Method
+> **설정 시 구체적인 경로가 먼저 오고 그것 보다 큰 범위의 경로가 뒤에 오도록 하자.**

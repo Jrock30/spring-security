@@ -2,6 +2,7 @@ package com.jrock.basicsecurity;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -30,12 +31,42 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private UserDetailsService userDetailsService;
 
     @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        /**
+         * 메모리 방식으로 USER 생성
+         * {noop} 암호화 방식을 prefix 로 지정함, 지정하지 않으면 에러 발생, {noop} 은 평문으로 암호화를 한다. 즉 암호화하지 않음.
+         */
+        auth.inMemoryAuthentication().withUser("user").password("{noop}1111").roles("USER");
+        auth.inMemoryAuthentication().withUser("sys").password("{noop}1111").roles("SYS");
+        auth.inMemoryAuthentication().withUser("admin").password("{noop}1111").roles("ADMIN", "SYS");
+    }
+
+    /**
+     * 인증 관련 HttpSecurity
+     */
+    @Override
     protected void configure(HttpSecurity http) throws Exception {
+        /**
+         * - 인가 API 권한설정
+         *   - 선언적 방식
+         *     * URL
+         *        - http.antMatchers("/users/**).hasRole("USER")
+         *     * Method
+         *        - @PreAuthorize("hasRole('USER)")
+         *   - 동적방식 - DB 연동 프로그래밍
+         *     - URL
+         *     - Method
+         *   **설정 시 구체적인 경로가 먼저 오고 그것 보다 큰 범위의 경로가 뒤에 오도록 하자.**
+         */
         http
+                // 인가
                 .authorizeRequests()
+                .antMatchers("/user").hasRole("USER") // /{path} 요청을 하면 USER 인가 처리를 한다.
+                .antMatchers("/admin/pay").hasRole("ADMIN")
+                .antMatchers("/admin/**").access("hasRole('ADMIN') or hasRole('SYS')") // SpEL
                 .anyRequest().authenticated(); // 어떤 요청에도 인증을 받도록
 
-        // 로그인
+        // 로그인 인증
         http
                 .formLogin()                            // 인증 폼 로그인 방식
 //                .loginPage("/loginPage")                // 사용자 정의 로그인 페이지

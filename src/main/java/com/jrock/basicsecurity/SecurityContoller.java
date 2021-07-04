@@ -30,4 +30,19 @@ public class SecurityContoller {
     public String loginPage() {
         return "loginPage";
     }
+
+    @GetMapping("/user")
+    public String user() {
+        return "user";
+    }
+
+    @GetMapping("/admin/pay")
+    public String adminPay() {
+        return "user";
+    }
+
+    @GetMapping("/admin/**")
+    public String admin() {
+        return "admin";
+    }
 }
