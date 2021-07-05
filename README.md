@@ -65,3 +65,20 @@
 >   - URL
 >   - Method
 > **설정 시 구체적인 경로가 먼저 오고 그것 보다 큰 범위의 경로가 뒤에 오도록 하자.**
+
+- 인증/인가 예외 API 필터 - ExceptionTranslationFilter ( 가장 먼저 FilterSecurityInterceptor 를 탄다. 그 다음 ExceptionTranslationFilter)
+> - AuthenticationException
+>   - 인증 예외처리
+>       1. AuthenticationEntryPoint ( 이 것이 타기 전에 SecurityContext 를 null 로 만듦)
+>           - 로그인 페이지 이동, 401 오류 코드 전달 등
+>       2. 인증 예외가 발생하기 전의 요청 정보를 저장 (ex- 이전 페이지에서 예외가 발생하면 이전 페이지를 저장(캐싱)하고 있다가 로그인 하면 다시 그 페이지로 갈 수 있게끔 할 수 있다.)
+>           - RequestCache -> 사용자의 이전 요청 정보를 세션에 저장하고 이를 꺼내 오는 캐시 메커니즘 (HttpSessionRequestCache 객체 저장, 이 구현체가 저장하고 있음.)
+>               - SavedRequest -> 사용자가 요청했던 request parameter 값들, 그 당시의 헤더값들 등이 저장 ( SavedRequest 객체를 계속 사용할 수 있도록 하는 필터 RequestCacheAwareFilter )
+> - AccessDeniedException
+>   - 인가 예외처리
+>       - AccessDeniedHandler 에서 예외 처리하도록 제공 (이 다음 보통은 response.redirect(/denied))
+> - e.g.  
+>   http.exceptionHandling()
+>       .authenticationEntryPoint(authenticationEntryPoint())   // 인증 실패시 커스텀   
+>       .accessDeniedHandler(accessDeniedHandler())             // 인가 실패시 커스텀
+> 

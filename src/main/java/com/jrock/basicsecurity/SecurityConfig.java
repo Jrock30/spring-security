@@ -2,6 +2,7 @@ package com.jrock.basicsecurity;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -9,10 +10,15 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.RequestCache;
+import org.springframework.security.web.savedrequest.SavedRequest;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -61,6 +67,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http
                 // 인가
                 .authorizeRequests()
+                .antMatchers("/login").permitAll() // login 페이지 모두 접근 permitAll
                 .antMatchers("/user").hasRole("USER") // /{path} 요청을 하면 USER 인가 처리를 한다.
                 .antMatchers("/admin/pay").hasRole("ADMIN")
                 .antMatchers("/admin/**").access("hasRole('ADMIN') or hasRole('SYS')") // SpEL
@@ -75,11 +82,32 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .usernameParameter("userId")            // 아이디 파라미터명 설정
                 .passwordParameter("password")          // 패스워드 파라미터명 설정
                 .loginProcessingUrl("/login_proc")      // 로그인 Form Action Url
-                .successHandler(new AuthenticationSuccessHandler() {    // 로그인 성공 후 핸들러
+                .successHandler(new AuthenticationSuccessHandler() {    // 로그인 성공 후 핸들러, new CustomAuthenticationHandler(){} 커스텀
                     @Override // 익명 클래스 생성
-                    public void onAuthenticationSuccess(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Authentication authentication) throws IOException, ServletException {
+                    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
                         System.out.println("authentication : " + authentication.getName());
-                        httpServletResponse.sendRedirect("/");
+//                        httpServletResponse.sendRedirect("/");
+//                        httpServletResponse.sendRedirect("/");
+                        /**
+                         * RequestCache 를 사용
+                         *  - 사용자의 이전 요청 정보를 세션에 저장하고 이를 꺼내 오는 캐시 메커니즘
+                         *  - HttpSessionRequestCache 객체 저장, 이 구현체가 저장하고 있음.
+                         *  - ex- 이전 페이지에서 예외가 발생하면 이전 페이지를 저장(캐싱)하고 있다가 로그인 하면 다시 그 페이지로 갈 수 있게끔 할 수 있다.
+                         *  - SavedRequest 객체를 계속 사용할 수 있도록 하는 필터 RequestCacheAwareFilter
+                         *  *****
+                         *  * 이 필터들은 인증이 필요한 페이지에 인증 및 인가가 되지 않는 사용자가 접근하였을 때 발생한다. 즉 인증이 필요하지 않는 페이지에 접근은 했을 시에는 발생하지 않는다는 점을 명심하자.
+                         *  *  - ex) /login 으로 접근했다가 SavedRequest 객체를 불러왔는데 null 이 되어 redirect 시 데이터가 없으므로 에러 발생
+                         *  *  - ex) 아래 처럼 null 처리 하는 것도 괜찮을듯
+                         *  * *****
+                         */
+                        RequestCache requestCache = new HttpSessionRequestCache();
+                        SavedRequest savedRequest = requestCache.getRequest(request, response); // 이전 정보 꺼내옴
+                        if (savedRequest != null) {
+                            String redirectUrl = savedRequest.getRedirectUrl();// 사용자가 원래 있던 페이지 정보
+                            response.sendRedirect(redirectUrl); // 이전페이지로 이동 redirect
+                        } else {
+                            response.sendRedirect("/");
+                        }
                     }
                 })
                 .failureHandler(new AuthenticationFailureHandler() {    // 로그인 실패 후 핸들러
@@ -155,6 +183,45 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http
                 .sessionManagement()
                 .sessionFixation().changeSessionId();
+
+        /**
+         * 인증, 인가 Exception
+         * *****
+         * 이 필터들은 인증이 필요한 페이지에 인증 및 인가가 되지 않는 사용자가 접근하였을 때 발생한다. 즉 인증이 필요하지 않는 페이지에 접근은 했을 시에는 발생하지 않는다는 점을 명심하자.
+         *  - ex) /login 으로 접근했다가 SavedRequest 객체를 불러왔는데 null 이 되어 redirect 시 데이터가 없으므로 에러 발생
+         * *****
+         * - 인증/인가 예외 API 필터 - ExceptionTranslationFilter ( 가장 먼저 FilterSecurityInterceptor 를 탄다. 그 다음 ExceptionTranslationFilter)
+         *  - AuthenticationException
+         *    - 인증 예외처리
+         *        1. AuthenticationEntryPoint ( 이 것이 타기 전에 SecurityContext 를 null 로 만듦)
+         *            - 로그인 페이지 이동, 401 오류 코드 전달 등
+         *        2. 인증 예외가 발생하기 전의 요청 정보를 저장 (ex- 이전 페이지에서 예외가 발생하면 이전 페이지를 저장(캐싱)하고 있다가 로그인 하면 다시 그 페이지로 갈 수 있게끔 할 수 있다.)
+         *            - RequestCache -> 사용자의 이전 요청 정보를 세션에 저장하고 이를 꺼내 오는 캐시 메커니즘 (이 구현체가 저장하고 있음., HttpSessionRequestCache 객체 저장)
+         *                - SavedRequest -> 사용자가 요청했던 request parameter 값들, 그 당시의 헤더값들 등이 저장
+         *                  - SavedRequest 객체를 계속 사용할 수 있도록 하는 필터 RequestCacheAwareFilter
+         *  - AccessDeniedException
+         *    - 인가 예외처리
+         *        - AccessDeniedHandler 에서 예외 처리하도록 제공 (이 다음 보통은 response.redirect(/denied))
+         */
+        http
+                .exceptionHandling()
+//                .authenticationEntryPoint(new AuthenticationEntryPoint() {
+//                    @Override
+//                    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException e) throws IOException, ServletException {
+//                        /**
+//                         * 인증에 실패하면 /login 으로 이동
+//                         * 여기의 /login 은 시큐리티 페이지가 아니고 사용자가 만든 login 으로 이동한다.
+//                         */
+//                        response.sendRedirect("/login");
+//                    }
+//                })
+                .accessDeniedHandler(new AccessDeniedHandler() {
+                    @Override
+                    public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException e) throws IOException, ServletException {
+                        // 인가(권한)에 실패하면 /denied 으로 이동
+                        response.sendRedirect("/denied");
+                    }
+                });
     }
 }
 

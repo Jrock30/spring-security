@@ -45,4 +45,9 @@ public class SecurityContoller {
     public String admin() {
         return "admin";
     }
+
+    @GetMapping("/login")
+    public String login() {
+        return "login";
+    }
 }
