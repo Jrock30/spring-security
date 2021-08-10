@@ -31,6 +31,8 @@ import java.io.IOException;
  */
 @Configuration
 @EnableWebSecurity // 웹 보안 활성화 어노테이션
+//@Order(0) SecurityConfig2 등 여러개를 만들 시 @Order 를 통해 순서를 지정해야한다.
+// 여거래의 SecurityConfig 를 만들 시 SecurityFilterChains 에 배열로 여러개가 만들어 진다.
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
